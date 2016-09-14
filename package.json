@@ -1,0 +1,23 @@
+{
+  "name": "waze-scrap",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SSTyT/waze-scrap.git"
+  },
+  "author": "Apivetta",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SSTyT/waze-scrap/issues"
+  },
+  "homepage": "https://github.com/SSTyT/waze-scrap#readme",
+  "dependencies": {
+    "request": "^2.74.0",
+    "winston": "^2.2.0"
+  }
+}
