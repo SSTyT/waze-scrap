@@ -1,5 +1,6 @@
 var request = require('request');
 var winston = require('winston');
+var moment = require('moment');
 var Pool = require('pg').Pool;
 var config = require('./config.json');
 
@@ -39,7 +40,7 @@ logger.info('Server start');
 
 var url = 'https://world-georss.waze.com/rtserver/web/TGeoRSS?tk=ccp_partner&ccp_partner_name=Hillsborough&format=JSON&types=traffic,alerts,irregularities&polygon=-58.456879,-34.532130;-58.493958,-34.546836;-58.531723,-34.615241;-58.526917,-34.659307;-58.458252,-34.706737;-58.406754,-34.659307;-58.339462,-34.649705;-58.362122,-34.579633;-58.409500,-34.559843;-58.456879,-34.532130;-58.456879,-34.532130';
 
-setInterval(function() {
+function wazeRequest() {
   var body = [];
   request
     .get(url)
@@ -50,7 +51,10 @@ setInterval(function() {
       scrap(JSON.parse(body));
     })
     .on('error', onError);
-}, 60000 * 10);
+}
+
+wazeRequest();
+setInterval(wazeRequest, 60000 * 10);
 
 var alertModel = {
   uuid: '',
@@ -64,59 +68,107 @@ var alertModel = {
   reportRating: 0,
   magvar: 0,
   location: {
-    x: 0,//long
-    y: 0//lat
+    x: 0, //long
+    y: 0 //lat
   },
   pubMillis: 0
 }
 
 var irregularityModel = {
-  updateDate: '',
+  id: 0,
   city: '',
+  type: '',
+  street: '',
+  endNode: '',
+  jamLevel: 0,
+  speed: 0,
+  regularSpeed: 0,
+  accuracy: 0,
+  severity: 0,
+  driversCount: 0,
+  seconds: 0,
+  delaySeconds: 0,
+  length: 0,
+  highway: false,
+  alertsCount: 0,
   line: [{
     x: 0,
     y: 0
   }],
-  detectionDateMillis: 0,
-  accuracy: 0
-  type: '',
-  endNode: '',
-  speed: 0,
-  seconds: 0,
-  street: '',
-  jamLevel: 0,
-  id: 0,
-  highway: false,
-  delaySeconds: 0,
-  severity: 0,
-  driversCount: 0,
-  alertsCount: 0,
-  length: 0,
-  updateDateMillis: 0,
   detectionDate: '',
-  regularSpeed: 0
+  detectionDateMillis: 0,
+  updateDate: '',
+  updateDateMillis: 0,
 }
 
 var jamModel = {
-    city: '',
-    level: ,
-    line: [{
-      x: 0,
-      y: 0
-    }],
-    length: 0,
-    turnType: '',
-    type: '',
-    uuid: '',
-    endNode: '',
-    speed: ,
-    blockingAlertUuid: '', //fk de alert
-    roadType: 0,
-    delay: 0,
-    street: '',
-    pubMillis: 0
-  },
+  uuid: '',
+  city: '',
+  type: '',
+  turnType: '',
+  street: '',
+  endNode: '',
+  roadType: 0,
+  speed: 0,
+  delay: 0,
+  length: 0,
+  level: 0,
+  line: [{
+    x: 0,
+    y: 0
+  }],
+  blockingAlertUuid: '', //fk de alert
+  pubMillis: 0
+};
 
-  function scrap(data) {
+function scrap(data) {
 
+  var alerts = data.alerts;
+  var jams = data.jams;
+  var irregularities = data.irregularities;
+
+  if (alerts) {
+    alerts.forEach(function(alertData) {
+
+      var alert = Object.assign({}, alertModel, alertData);
+
+      var insertAlert = `INSERT INTO public.alerts(
+      uuid, city, type, subtype, street, "roadType", confidence, reliability, 
+      "reportRating", magvar, geom, "timestamp")
+      VALUES ('${alert.uuid}', '${alert.city}', '${alert.type}', '${alert.subtype}', '${alert.street}', ${alert.roadType}, ${alert.confidence}, ${alert.reliability}, 
+      ${alert.reportRating}, ${alert.magvar}, (ST_SetSRID(ST_MakePoint(${alert.location.x},${alert.location.y}),4326)), 
+      '${moment(alert.pubMillis).format('YYYY-MM-DD HH:mm:ss')}-3');`;
+
+
+      var updateAlert = `UPDATE public.alerts
+      SET city='${alert.city}', type='${alert.type}', subtype='${alert.subtype}', street='${alert.street}', "roadType"='${alert.roadType}', confidence=${alert.confidence}, 
+      reliability=${alert.reliability}, "reportRating"=${alert.reportRating}, magvar=${alert.magvar}, geom=(ST_SetSRID(ST_MakePoint(${alert.location.x},${alert.location.y}),4326)), 
+      "timestamp"='${moment(alert.pubMillis).format('YYYY-MM-DD HH:mm:ss')}-3'
+      WHERE uuid='${alert.uuid}';`
+
+      pool.query(`SELECT uuid FROM public.alerts WHERE uuid = '${alert.uuid}'`, function(err, result) {
+        if (err) {
+          onError(err);
+        } else if (result.rows[0]) {
+          pool.query(updateAlert, onError);
+          console.log(updateAlert);
+        } else {
+          pool.query(insertAlert, onError);
+          console.log(insertAlert);
+        }
+      });
+    });
   }
+
+  if (jams) {
+    jams.forEach(function(jam) {
+      console.log("un jam");
+    });
+  }
+
+  if (irregularities) {
+    irregularities.forEach(function(irregularity) {
+      console.log("un irregularity");
+    });
+  }
+}

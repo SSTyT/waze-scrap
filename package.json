@@ -17,6 +17,8 @@
   },
   "homepage": "https://github.com/SSTyT/waze-scrap#readme",
   "dependencies": {
+    "moment": "^2.15.0",
+    "pg": "^6.1.0",
     "request": "^2.74.0",
     "winston": "^2.2.0"
   }
