@@ -23,8 +23,7 @@ WITH (
 );
 ALTER TABLE public.alerts
   OWNER TO postgres;
-
-
+  
 -- Table: public.irregularities
 
 -- DROP TABLE public.irregularities;
@@ -37,10 +36,10 @@ CREATE TABLE public.irregularities
   street text,
   "endNode" text,
   "jamLevel" integer,
-  speed integer,
-  "regularSpeed" integer,
+  speed double precision,
+  "regularSpeed" double precision,
   accuracy integer,
-  severitry integer,
+  severity integer,
   "driversCount" integer,
   seconds integer,
   "delaySeconds" integer,
@@ -71,7 +70,7 @@ CREATE TABLE public.jams
   street text,
   "endNode" text,
   "roadType" integer,
-  speed integer,
+  speed double precision,
   delay integer,
   length integer,
   level integer,
