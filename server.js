@@ -130,7 +130,7 @@ function scrap(data) {
   if (alerts) {
     alerts.forEach(function(alertData) {
 
-      var alert = Object.assign({}, alertModel, alertData);
+      var alert = sanitize(Object.assign({}, alertModel, alertData));
 
       var insertAlert = `INSERT INTO public.alerts(
       uuid, city, type, subtype, street, "roadType", confidence, reliability, 
@@ -161,14 +161,90 @@ function scrap(data) {
   }
 
   if (jams) {
-    jams.forEach(function(jam) {
-      console.log("un jam");
+    jams.forEach(function(jamData) {
+
+          var jam = sanitize(Object.assign({}, jamModel, jamData));
+
+          var coords = jam.line.map((coord) => {
+            return `ST_MakePoint(${coord.x},${coord.y})`;
+          }).join();
+
+          var line = `ST_SetSRID(ST_MakeLine(ARRAY[${coords}]),4326)`
+
+          var insertJam = `INSERT INTO public.jams(
+      uuid, city, type, "turnType", street, "endNode", "roadType", 
+      speed, delay, length, level, geom, ${jam.blockingAlertUuid?'"blockingAlertUuid",':''} "timestamp")
+      VALUES ('${jam.uuid}', '${jam.city}', '${jam.type}', '${jam.turnType}', '${jam.street}', '${jam.endNode}', ${jam.roadType}, 
+      ${jam.speed}, ${jam.delay}, ${jam.length}, ${jam.level}, (${line}), ${jam.blockingAlertUuid?`'${jam.blockingAlertUuid}',`:''} '${moment(jam.pubMillis).format('YYYY-MM-DD HH:mm:ss')}-3');`;
+
+
+      var updateJam = `UPDATE public.jams
+      SET city='${jam.city}', type='${jam.type}', "turnType"='${jam.turnType}', street='${jam.street}', "endNode"='${jam.endNode}', 
+      "roadType"=${jam.roadType}, speed=${jam.speed}, delay=${jam.delay}, length=${jam.length}, level=${jam.level}, geom=(${line}), ${jam.blockingAlertUuid?`"blockingAlertUuid"='${jam.blockingAlertUuid}',`:''}  
+      "timestamp"='${moment(jam.pubMillis).format('YYYY-MM-DD HH:mm:ss')}-3'
+    WHERE uuid = '${jam.uuid}';`
+
+      pool.query(`SELECT uuid FROM public.jams WHERE uuid = '${jam.uuid}'`, function(err, result) {
+        if (err) {
+          onError(err);
+        } else if (result.rows[0]) {
+          pool.query(updateJam, onError);
+          console.log(updateJam);
+        } else {
+          pool.query(insertJam, onError);
+          console.log(insertJam);
+        }
+      });
     });
   }
 
   if (irregularities) {
-    irregularities.forEach(function(irregularity) {
-      console.log("un irregularity");
+    irregularities.forEach(function(irregularityData) {
+
+      var irregularity = sanitize(Object.assign({}, irregularityModel, irregularityData));
+
+      var coords = irregularity.line.map((coord) => {
+        return `ST_MakePoint(${coord.x},${coord.y})`;
+      }).join();
+
+      var line = `ST_SetSRID(ST_MakeLine(ARRAY[${coords}]),4326)`
+
+      var insertIrregularity = `INSERT INTO public.irregularities(
+      id, city, type, street, "endNode", "jamLevel", speed, "regularSpeed", 
+      accuracy, severity, "driversCount", seconds, "delaySeconds", 
+      length, highway, "alertsCount", geom, "detectionTime", "updateTime")
+      VALUES ('${irregularity.id}', '${irregularity.city}', '${irregularity.type}', '${irregularity.street}', '${irregularity.endNode}', ${irregularity.jamLevel}, ${irregularity.speed}, ${irregularity.regularSpeed}, 
+      ${irregularity.accuracy}, ${irregularity.severity}, ${irregularity.driversCount}, ${irregularity.seconds}, ${irregularity.delaySeconds}, 
+      ${irregularity.length}, ${irregularity.highway}, ${irregularity.alertsCount}, (${line}), '${moment(irregularity.detectionDateMillis).format('YYYY-MM-DD HH:mm:ss')}-3', '${moment(irregularity.updateDateMillis).format('YYYY-MM-DD HH:mm:ss')}-3');`;
+
+      var updateIrregularity = `UPDATE public.irregularities
+      SET city='${irregularity.city}', type='${irregularity.type}', street='${irregularity.street}', "endNode"='${irregularity.endNode}', "jamLevel"=${irregularity.jamLevel}, speed=${irregularity.speed}, 
+      "regularSpeed"=${irregularity.regularSpeed}, accuracy=${irregularity.accuracy}, severity=${irregularity.severity}, "driversCount"=${irregularity.driversCount}, 
+      seconds=${irregularity.seconds}, "delaySeconds"=${irregularity.delaySeconds}, length=${irregularity.length}, highway=${irregularity.highway}, "alertsCount"=${irregularity.alertsCount}, 
+      geom=(${line}), "detectionTime"='${moment(irregularity.detectionDateMillis).format('YYYY-MM-DD HH:mm:ss')}-3', "updateTime"='${moment(irregularity.updateDateMillis).format('YYYY-MM-DD HH:mm:ss')}-3'
+      WHERE id = '${irregularity.id}';`
+
+      pool.query(`SELECT id FROM public.irregularities WHERE id = '${irregularity.id}'`, function(err, result) {
+        if (err) {
+          onError(err);
+        } else if (result.rows[0]) {
+          pool.query(updateIrregularity, onError);
+          console.log(updateIrregularity);
+        } else {
+          pool.query(insertIrregularity, onError);
+          console.log(insertIrregularity);
+        }
+      });
     });
-  }
+  } 
+}
+
+function sanitize(model){
+  var keys = Object.keys(model);
+  keys.forEach((key) => {
+  if(typeof model[key] === 'string'){
+    model[key] = model[key].replace(/'/gi,`''`);
+    }
+  });
+  return model;
 }
