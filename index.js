@@ -1,5 +1,6 @@
+'use strict';
+
 const request = require('request');
-const moment = require('moment');
 const config = require('./lib/config');
 const logger = require('./lib/logger');
 const schemas = require('./lib/schemas');

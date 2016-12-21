@@ -1,6 +1,8 @@
+'use strict';
+
 module.exports = {
   db: {
-    connectionString: 'mongodb://user:pass@localhost:27017/waze',
+    connectionString: 'mongodb://user:pass@localhost:27017/waze?authSource=admin',
   },
   logs: {
     console: './logs.log',

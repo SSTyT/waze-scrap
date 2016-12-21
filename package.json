@@ -17,7 +17,6 @@
   },
   "homepage": "https://github.com/SSTyT/waze-scrap#readme",
   "dependencies": {
-    "moment": "^2.15.0",
     "mongoose": "^4.7.4",
     "q": "^1.4.1",
     "request": "^2.74.0",
