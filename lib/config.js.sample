@@ -1,0 +1,9 @@
+module.exports = {
+  db: {
+    connectionString: 'mongodb://user:pass@localhost:27017/waze',
+  },
+  logs: {
+    console: './logs.log',
+    exception: './exceptions.log'
+  }
+}
